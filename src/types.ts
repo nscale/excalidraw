@@ -10,6 +10,9 @@ import {
   Arrowhead,
   ChartType,
   FontFamilyValues,
+  FileId,
+  ExcalidrawImageElement,
+  Theme,
 } from "./element/types";
 import { SHAPES } from "./shapes";
 import { Point as RoughPoint } from "roughjs/bin/geometry";
@@ -17,12 +20,15 @@ import { LinearElementEditor } from "./element/linearElementEditor";
 import { SuggestedBinding } from "./element/binding";
 import { ImportedDataState } from "./data/types";
 import type App from "./components/App";
-import type { ResolvablePromise } from "./utils";
+import type { ResolvablePromise, throttleRAF } from "./utils";
 import { Spreadsheet } from "./charts";
 import { Language } from "./i18n";
 import { ClipboardData } from "./clipboard";
 import { isOverScrollBars } from "./scene";
 import { MaybeTransformHandleType } from "./element/transformHandles";
+import Library from "./data/library";
+import type { FileSystemHandle } from "./data/filesystem";
+import type { ALLOWED_IMAGE_MIME_TYPES, MIME_TYPES } from "./constants";
 
 export type Point = Readonly<RoughPoint>;
 
@@ -39,7 +45,26 @@ export type Collaborator = {
     background: string;
     stroke: string;
   };
+  // The url of the collaborator's avatar, defaults to username intials
+  // if not present
+  src?: string;
 };
+
+export type DataURL = string & { _brand: "DataURL" };
+
+export type BinaryFileData = {
+  mimeType:
+    | typeof ALLOWED_IMAGE_MIME_TYPES[number]
+    // future user or unknown file type
+    | typeof MIME_TYPES.binary;
+  id: FileId;
+  dataURL: DataURL;
+  created: number;
+};
+
+export type BinaryFileMetadata = Omit<BinaryFileData, "dataURL">;
+
+export type BinaryFiles = Record<ExcalidrawElement["id"], BinaryFileData>;
 
 export type AppState = {
   isLoading: boolean;
@@ -55,8 +80,13 @@ export type AppState = {
   // (e.g. text element when typing into the input)
   editingElement: NonDeletedExcalidrawElement | null;
   editingLinearElement: LinearElementEditor | null;
-  elementType: typeof SHAPES[number]["value"];
-  elementLocked: boolean;
+  activeTool: {
+    type: typeof SHAPES[number]["value"] | "eraser";
+    lastActiveToolBeforeEraser: typeof SHAPES[number]["value"] | null;
+    locked: boolean;
+  };
+  penMode: boolean;
+  penDetected: boolean;
   exportBackground: boolean;
   exportEmbedScene: boolean;
   exportWithDarkMode: boolean;
@@ -97,7 +127,7 @@ export type AppState = {
   showHelpDialog: boolean;
   toastMessage: string | null;
   zenModeEnabled: boolean;
-  theme: "light" | "dark";
+  theme: Theme;
   gridSize: number | null;
   viewModeEnabled: boolean;
 
@@ -112,7 +142,7 @@ export type AppState = {
   offsetLeft: number;
 
   isLibraryOpen: boolean;
-  fileHandle: import("browser-fs-access").FileSystemHandle | null;
+  fileHandle: FileSystemHandle | null;
   collaborators: Map<string, Collaborator>;
   showStats: boolean;
   currentChartType: ChartType;
@@ -125,16 +155,15 @@ export type AppState = {
         shown: true;
         data: Spreadsheet;
       };
+  /** imageElement waiting to be placed on canvas */
+  pendingImageElement: NonDeleted<ExcalidrawImageElement> | null;
+  showHyperlinkPopup: false | "info" | "editor";
 };
 
 export type NormalizedZoomValue = number & { _brand: "normalizedZoom" };
 
 export type Zoom = Readonly<{
   value: NormalizedZoomValue;
-  translation: Readonly<{
-    x: number;
-    y: number;
-  }>;
 }>;
 
 export type PointerCoords = Readonly<{
@@ -154,8 +183,25 @@ export declare class GestureEvent extends UIEvent {
   readonly scale: number;
 }
 
-export type LibraryItem = readonly NonDeleted<ExcalidrawElement>[];
+// libraries
+// -----------------------------------------------------------------------------
+/** @deprecated legacy: do not use outside of migration paths */
+export type LibraryItem_v1 = readonly NonDeleted<ExcalidrawElement>[];
+/** @deprecated legacy: do not use outside of migration paths */
+export type LibraryItems_v1 = readonly LibraryItem_v1[];
+
+/** v2 library item */
+export type LibraryItem = {
+  id: string;
+  status: "published" | "unpublished";
+  elements: readonly NonDeleted<ExcalidrawElement>[];
+  /** timestamp in epoch (ms) */
+  created: number;
+  name?: string;
+  error?: string;
+};
 export type LibraryItems = readonly LibraryItem[];
+// -----------------------------------------------------------------------------
 
 // NOTE ready/readyPromise props are optional for host apps' sake (our own
 // implem guarantees existence)
@@ -166,12 +212,25 @@ export type ExcalidrawAPIRefValue =
       ready?: false;
     };
 
+export type ExcalidrawInitialDataState = Merge<
+  ImportedDataState,
+  {
+    libraryItems?:
+      | Required<ImportedDataState>["libraryItems"]
+      | Promise<Required<ImportedDataState>["libraryItems"]>;
+  }
+>;
+
 export interface ExcalidrawProps {
   onChange?: (
     elements: readonly ExcalidrawElement[],
     appState: AppState,
+    files: BinaryFiles,
   ) => void;
-  initialData?: ImportedDataState | null | Promise<ImportedDataState | null>;
+  initialData?:
+    | ExcalidrawInitialDataState
+    | null
+    | Promise<ExcalidrawInitialDataState | null>;
   excalidrawRef?: ForwardRef<ExcalidrawAPIRefValue>;
   onCollabButtonClick?: () => void;
   isCollaborating?: boolean;
@@ -184,14 +243,17 @@ export interface ExcalidrawProps {
     data: ClipboardData,
     event: ClipboardEvent | null,
   ) => Promise<boolean> | boolean;
-  renderTopRightUI?: (isMobile: boolean, appState: AppState) => JSX.Element;
+  renderTopRightUI?: (
+    isMobile: boolean,
+    appState: AppState,
+  ) => JSX.Element | null;
   renderFooter?: (isMobile: boolean, appState: AppState) => JSX.Element;
   langCode?: Language["code"];
   viewModeEnabled?: boolean;
   zenModeEnabled?: boolean;
   gridModeEnabled?: boolean;
   libraryReturnUrl?: string;
-  theme?: "dark" | "light";
+  theme?: Theme;
   name?: string;
   renderCustomStats?: (
     elements: readonly NonDeletedExcalidrawElement[],
@@ -202,6 +264,13 @@ export interface ExcalidrawProps {
   handleKeyboardGlobally?: boolean;
   onLibraryChange?: (libraryItems: LibraryItems) => void | Promise<any>;
   autoFocus?: boolean;
+  generateIdForFile?: (file: File) => string | Promise<string>;
+  onLinkOpen?: (
+    element: NonDeletedExcalidrawElement,
+    event: CustomEvent<{
+      nativeEvent: MouseEvent | React.PointerEvent<HTMLCanvasElement>;
+    }>,
+  ) => void;
 }
 
 export type SceneData = {
@@ -209,6 +278,7 @@ export type SceneData = {
   appState?: ImportedDataState["appState"];
   collaborators?: Map<string, Collaborator>;
   commitToHistory?: boolean;
+  libraryItems?: LibraryItems | LibraryItems_v1;
 };
 
 export enum UserIdleState {
@@ -222,11 +292,13 @@ export type ExportOpts = {
   onExportToBackend?: (
     exportedElements: readonly NonDeletedExcalidrawElement[],
     appState: AppState,
+    files: BinaryFiles,
     canvas: HTMLCanvasElement | null,
   ) => void;
   renderCustomUI?: (
     exportedElements: readonly NonDeletedExcalidrawElement[],
     appState: AppState,
+    files: BinaryFiles,
     canvas: HTMLCanvasElement | null,
   ) => JSX.Element;
 };
@@ -251,6 +323,25 @@ export type AppProps = ExcalidrawProps & {
   };
   detectScroll: boolean;
   handleKeyboardGlobally: boolean;
+  isCollaborating: boolean;
+};
+
+/** A subset of App class properties that we need to use elsewhere
+ * in the app, eg Manager. Factored out into a separate type to keep DRY. */
+export type AppClassProperties = {
+  props: AppProps;
+  canvas: HTMLCanvasElement | null;
+  focusContainer(): void;
+  library: Library;
+  imageCache: Map<
+    FileId,
+    {
+      image: HTMLImageElement | Promise<HTMLImageElement>;
+      mimeType: typeof ALLOWED_IMAGE_MIME_TYPES[number];
+    }
+  >;
+  files: BinaryFiles;
+  deviceType: App["deviceType"];
 };
 
 export type PointerDownState = Readonly<{
@@ -289,24 +380,34 @@ export type PointerDownState = Readonly<{
     // pointer interaction
     hasBeenDuplicated: boolean;
     hasHitCommonBoundingBoxOfSelectedElements: boolean;
+    hasHitElementInside: boolean;
   };
   withCmdOrCtrl: boolean;
   drag: {
-    // Might change during the pointer interation
+    // Might change during the pointer interaction
     hasOccurred: boolean;
-    // Might change during the pointer interation
+    // Might change during the pointer interaction
     offset: { x: number; y: number } | null;
   };
   // We need to have these in the state so that we can unsubscribe them
   eventListeners: {
     // It's defined on the initial pointer down event
-    onMove: null | ((event: PointerEvent) => void);
+    onMove: null | ReturnType<typeof throttleRAF>;
     // It's defined on the initial pointer down event
     onUp: null | ((event: PointerEvent) => void);
     // It's defined on the initial pointer down event
     onKeyDown: null | ((event: KeyboardEvent) => void);
     // It's defined on the initial pointer down event
     onKeyUp: null | ((event: KeyboardEvent) => void);
+  };
+  boxSelection: {
+    hasOccurred: boolean;
+  };
+  elementIdsToErase: {
+    [key: ExcalidrawElement["id"]]: {
+      opacity: ExcalidrawElement["opacity"];
+      erase: boolean;
+    };
   };
 }>;
 
@@ -322,10 +423,17 @@ export type ExcalidrawImperativeAPI = {
   scrollToContent: InstanceType<typeof App>["scrollToContent"];
   getSceneElements: InstanceType<typeof App>["getSceneElements"];
   getAppState: () => InstanceType<typeof App>["state"];
+  getFiles: () => InstanceType<typeof App>["files"];
   refresh: InstanceType<typeof App>["refresh"];
   importLibrary: InstanceType<typeof App>["importLibraryFromUrl"];
   setToastMessage: InstanceType<typeof App>["setToastMessage"];
+  addFiles: (data: BinaryFileData[]) => void;
   readyPromise: ResolvablePromise<ExcalidrawImperativeAPI>;
   ready: true;
   id: string;
+};
+
+export type DeviceType = {
+  isMobile: boolean;
+  isTouchScreen: boolean;
 };

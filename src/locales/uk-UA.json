@@ -9,6 +9,7 @@
     "copy": "Копіювати",
     "copyAsPng": "Копіювати як PNG",
     "copyAsSvg": "Копіювати як SVG",
+    "copyText": "Копіювати в буфер обміну як текст",
     "bringForward": "Перемістити вперед",
     "sendToBack": "На задній план",
     "bringToFront": "На передній план",
@@ -20,10 +21,6 @@
     "background": "Тло",
     "fill": "Заповнити",
     "strokeWidth": "Товщина контуру",
-    "strokeShape": "Форма обведення",
-    "strokeShape_gel": "Гельручка",
-    "strokeShape_fountain": "Перо",
-    "strokeShape_brush": "Пензель",
     "strokeStyle": "Стиль контуру",
     "strokeStyle_solid": "Суцільний",
     "strokeStyle_dashed": "Пунктир",
@@ -39,6 +36,7 @@
     "arrowhead_arrow": "Стрілка",
     "arrowhead_bar": "Колона",
     "arrowhead_dot": "Точка",
+    "arrowhead_triangle": "Трикутник",
     "fontSize": "Розмір шрифту",
     "fontFamily": "Шрифт",
     "onlySelected": "Тільки вибране",
@@ -67,6 +65,7 @@
     "cartoonist": "Карикатурист",
     "fileTitle": "Назва файла",
     "colorPicker": "Палітра кольорів",
+    "canvasColors": "Використовується на полотні",
     "canvasBackground": "Тло полотна",
     "drawingCanvas": "Полотно",
     "layers": "Шари",
@@ -101,9 +100,26 @@
     "viewMode": "Режим перегляду",
     "toggleExportColorScheme": "Переключити колірну схему експорту",
     "share": "Поділитися",
-    "showStroke": "",
-    "showBackground": "",
-    "toggleTheme": "Перемкнути тему"
+    "showStroke": "Показати палітру для контура",
+    "showBackground": "Показати палітру для фону",
+    "toggleTheme": "Перемкнути тему",
+    "personalLib": "Персональна бібліотека",
+    "excalidrawLib": "Бібліотека Excalidraw",
+    "decreaseFontSize": "Зменшити розмір шрифту",
+    "increaseFontSize": "Збільшити розмір шрифту",
+    "unbindText": "Відв'язати текст",
+    "bindText": "Прив’язати текст до контейнера",
+    "link": {
+      "edit": "Редагування посилання",
+      "create": "Створити посилання",
+      "label": "Посилання"
+    },
+    "elementLock": {
+      "lock": "",
+      "unlock": "",
+      "lockAll": "",
+      "unlockAll": ""
+    }
   },
   "buttons": {
     "clearReset": "Очистити полотно",
@@ -136,7 +152,13 @@
     "darkMode": "Темний режим",
     "lightMode": "Світлий режим",
     "zenMode": "Режим Дзен",
-    "exitZenMode": "Вийти з дзен-режиму"
+    "exitZenMode": "Вийти з дзен-режиму",
+    "cancel": "Скасувати",
+    "clear": "Очистити",
+    "remove": "Видалити",
+    "publishLibrary": "Опублікувати",
+    "submit": "Надіслати",
+    "confirm": "Підтвердити"
   },
   "alerts": {
     "clearReset": "Це очистить все полотно. Впевнені?",
@@ -145,7 +167,7 @@
     "couldNotLoadInvalidFile": "Файл з помилками не відкрився",
     "importBackendFailed": "Імпортування невдале.",
     "cannotExportEmptyCanvas": "Не вийшло експортувати пусте полотно.",
-    "couldNotCopyToClipboard": "Не копіюється до буферу обміну. Спробуйте в браузері Chrome.",
+    "couldNotCopyToClipboard": "Не вдалося скопіювати до буфера обміну.",
     "decryptFailed": "Не вдалося розшифрувати дані.",
     "uploadedSecurly": "Це завантаження було захищене наскрізним шифруванням, а це означає що сервер Excalidraw та інші не зможуть прочитати вміст.",
     "loadSceneOverridePrompt": "Завантаження зовнішнього креслення замінить ваш наявний контент. Продовжити?",
@@ -154,13 +176,24 @@
     "errorAddingToLibrary": "Не вдалося додати елемент до бібліотеки",
     "errorRemovingFromLibrary": "Не вдалося видалити елемент з бібліотеки",
     "confirmAddLibrary": "Це призведе до додавання {{numShapes}} фігур до вашої бібліотеки. Ви впевнені?",
-    "imageDoesNotContainScene": "Імпортування зображень на даний момент не підтримується.\n\nЧи хочете ви імпортувати сцену? Це зображення не містить ніяких даних сцен. Ви увімкнули це під час експорту?",
+    "imageDoesNotContainScene": "",
     "cannotRestoreFromImage": "Сцена не може бути відновлена з цього файлу зображення",
     "invalidSceneUrl": "Не вдалося імпортувати сцену з наданого URL. Він або недоформований, або не містить дійсних даних Excalidraw JSON.",
-    "resetLibrary": "Це призведе до очищення бібліотеки. Ви впевнені?"
+    "resetLibrary": "Це призведе до очищення бібліотеки. Ви впевнені?",
+    "removeItemsFromsLibrary": "",
+    "invalidEncryptionKey": ""
+  },
+  "errors": {
+    "unsupportedFileType": "Непідтримуваний тип файлу.",
+    "imageInsertError": "Не вдалося вставити зображення. Повторіть спробу пізніше...",
+    "fileTooBig": "Занадто великий розмір файлу, максимальний розмір файлу {{maxSize}}.",
+    "svgImageInsertError": "Не вдалося вставити SVG-зображення. Помилка розмітки SVG.",
+    "invalidSVGString": "Недійсний SVG.",
+    "cannotResolveCollabServer": ""
   },
   "toolBar": {
     "selection": "Виділення",
+    "image": "Вставити зображення",
     "rectangle": "Прямокутник",
     "diamond": "Ромб",
     "ellipse": "Еліпс",
@@ -169,7 +202,10 @@
     "freedraw": "Малювати",
     "text": "Текст",
     "library": "Бібліотека",
-    "lock": "Залишити обраний інструмент після креслення"
+    "lock": "Залишити обраний інструмент після креслення",
+    "penMode": "",
+    "link": "Додати/Оновити посилання для вибраної форми",
+    "eraser": "Очищувач"
   },
   "headings": {
     "canvasActions": "Дії з полотном",
@@ -177,18 +213,25 @@
     "shapes": "Фігури"
   },
   "hints": {
+    "canvasPanning": "Щоб перемістити полотно, утримуйте коліщатко миші або пробіл під час перетягування",
     "linearElement": "Натисніть щоб додати кілька точок, перетягніть щоб намалювати одну лінію",
     "freeDraw": "Натисніть і потягніть, відпустіть коли завершите",
     "text": "Порада: можна також додати текст, двічі клацнувши по будь-якому місці інструментом вибору",
-    "text_selected": "",
+    "text_selected": "Подвійний клік або натисніть клавішу ENTER, щоб редагувати текст",
     "text_editing": "",
     "linearElementMulti": "Натисніть на останню точку, клацніть Esc або Enter щоб завершити",
     "lockAngle": "Ви можете обмежити кут, утримуюючи SHIFT",
     "resize": "Ви можете зберегти пропорції, утримуючи SHIFT під час зміни розміру,\nутримуйте ALT для змінення розміру від центру",
+    "resizeImage": "",
     "rotate": "Ви можете обмежити кути, утримуючи SHIFT під час обертання",
     "lineEditor_info": "Двічі клацніть або натисніть Enter щоб редагувати точки",
-    "lineEditor_pointSelected": "Натисніть Видалити, щоб видалити точку, CtrlOrCmd+D для дублювання, або перетягніть, щоб переміститися",
-    "lineEditor_nothingSelected": "Виберіть точку для переміщення чи видалення, або утримуйте Alt і натисніть, щоб додати нові точки"
+    "lineEditor_pointSelected": "",
+    "lineEditor_nothingSelected": "",
+    "placeImage": "",
+    "publishLibrary": "Опублікувати свою власну бібліотеку",
+    "bindTextToElement": "Натисніть Enter, щоб додати текст",
+    "deepBoxSelect": "",
+    "eraserRevert": ""
   },
   "canvasError": {
     "cannotShowPreview": "Не вдається показати попередній перегляд",
@@ -229,16 +272,18 @@
     "link_details": "Експортувати як посилання тільки для читання.",
     "link_button": "Експортувати у посилання",
     "excalidrawplus_description": "",
-    "excalidrawplus_button": "",
+    "excalidrawplus_button": "Експортувати",
     "excalidrawplus_exportError": ""
   },
   "helpDialog": {
     "blog": "Наш блог",
     "click": "натиснути",
+    "deepSelect": "Глибокий вибір",
+    "deepBoxSelect": "",
     "curvedArrow": "Крива стрілка",
     "curvedLine": "Крива лінія",
     "documentation": "Документація",
-    "doubleClick": "",
+    "doubleClick": "подвійний клік",
     "drag": "перетягнути",
     "editor": "Редактор",
     "editSelectedShape": "",
@@ -246,14 +291,66 @@
     "howto": "Дотримуйтесь наших інструкцій",
     "or": "або",
     "preventBinding": "Запобігти зв'язування зі стрілками",
-    "shapes": "Фігури",
+    "tools": "Інструменти",
     "shortcuts": "Гарячі клавіші",
-    "textFinish": "",
-    "textNewLine": "",
+    "textFinish": "Завершити редагування (текстовий редактор)",
+    "textNewLine": "Додати новий рядок (текстовий редактор)",
     "title": "Допомога",
     "view": "Вигляд",
     "zoomToFit": "Збільшити щоб умістити всі елементи",
-    "zoomToSelection": "Наблизити вибране"
+    "zoomToSelection": "Наблизити вибране",
+    "toggleElementLock": ""
+  },
+  "clearCanvasDialog": {
+    "title": "Очистити полотно"
+  },
+  "publishDialog": {
+    "title": "Опублікувати бібліотеку",
+    "itemName": "",
+    "authorName": "Ім'я автора",
+    "githubUsername": "Ім'я користувача Github",
+    "twitterUsername": "Ім'я користувача Твитер",
+    "libraryName": "Назва бібліотеки",
+    "libraryDesc": "Опис бібліотеки",
+    "website": "Вебсайт",
+    "placeholder": {
+      "authorName": "Ваше ім'я або ім'я користувача",
+      "libraryName": "Назва вашої бібліотеки",
+      "libraryDesc": "Опис вашої бібліотеки, щоб допомогти людям зрозуміти її використання",
+      "githubHandle": "",
+      "twitterHandle": "",
+      "website": ""
+    },
+    "errors": {
+      "required": "",
+      "website": "Введіть дійсну URL-адресу"
+    },
+    "noteDescription": {
+      "pre": "Подати бібліотеку, щоб вона була включена до ",
+      "link": "публічного репозиторія бібліотек",
+      "post": ""
+    },
+    "noteGuidelines": {
+      "pre": "",
+      "link": "настанови",
+      "post": ""
+    },
+    "noteLicense": {
+      "pre": "",
+      "link": "Ліцензія MIT, ",
+      "post": ""
+    },
+    "noteItems": "",
+    "atleastOneLibItem": ""
+  },
+  "publishSuccessDialog": {
+    "title": "Бібліотека відправлена",
+    "content": "Дякуємо, {{authorName}}. Ваша бібліотека була відправлена для розгляду. Ви можете відстежувати статус",
+    "link": "тут"
+  },
+  "confirmDialog": {
+    "resetLibrary": "Скинути бібліотеку",
+    "removeItemsFromLib": "Видалити вибрані елементи з бібліотеки"
   },
   "encrypted": {
     "tooltip": "Ваші креслення захищені наскрізним шифруванням — сервери Excalidraw ніколи їх не побачать.",
@@ -275,6 +372,7 @@
     "width": "Ширина"
   },
   "toast": {
+    "addedToLibrary": "Додано до бібліотеки",
     "copyStyles": "Скопійовані стилі.",
     "copyToClipboard": "Скопіювати до буферу обміну.",
     "copyToClipboardAsPng": "Скопійовано {{exportSelection}} до буфера обміну як PNG\n({{exportColorScheme}})",
@@ -282,5 +380,52 @@
     "fileSavedToFilename": "Збережено в {filename}",
     "canvas": "полотно",
     "selection": "виділення"
+  },
+  "colors": {
+    "ffffff": "Білий",
+    "f8f9fa": "Сірий 0",
+    "f1f3f5": "Сірий 1",
+    "fff5f5": "Червоний 0",
+    "fff0f6": "Рожевий 0",
+    "f8f0fc": "Виноград 0",
+    "f3f0ff": "Фіолетовий 0",
+    "edf2ff": "Індиго 0",
+    "e7f5ff": "Синій 0",
+    "e3fafc": "Ціан 0",
+    "e6fcf5": "Зеленувато-блакитний 0",
+    "ebfbee": "Зелений 0",
+    "f4fce3": "Лайм 0",
+    "fff9db": "Жовтий 0",
+    "fff4e6": "Помаранчевий 0",
+    "transparent": "Прозорий",
+    "ced4da": "Сірий 4",
+    "868e96": "Сірий 6",
+    "fa5252": "Червоний 6",
+    "e64980": "Рожевий 6",
+    "be4bdb": "Виноград 6",
+    "7950f2": "Фіолетовий 6",
+    "4c6ef5": "Індиго 6",
+    "228be6": "Синій 6",
+    "15aabf": "Ціан 6",
+    "12b886": "Зеленувато-блакитний 6",
+    "40c057": "Зелений 6",
+    "82c91e": "Лайм 6",
+    "fab005": "Жовтий 6",
+    "fd7e14": "Помаранчевий 6",
+    "000000": "Чорний",
+    "343a40": "Сірий 8",
+    "495057": "Сірий 7",
+    "c92a2a": "Червоний 9",
+    "a61e4d": "Рожевий 9",
+    "862e9c": "Виноград 9",
+    "5f3dc4": "Фіолетовий 9",
+    "364fc7": "Індиго 9",
+    "1864ab": "Синій 9",
+    "0b7285": "Ціан 9",
+    "087f5b": "Зеленувато-блакитний 9",
+    "2b8a3e": "Зелений 9",
+    "5c940d": "Лаймовий 9",
+    "e67700": "Жовтий 9",
+    "d9480f": "Помаранчевий 9"
   }
 }

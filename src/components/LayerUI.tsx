@@ -1,28 +1,14 @@
 import clsx from "clsx";
-import React, {
-  RefObject,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback } from "react";
 import { ActionManager } from "../actions/manager";
 import { CLASSES } from "../constants";
 import { exportCanvas } from "../data";
-import { importLibraryFromJSON, saveLibraryAsJSON } from "../data/json";
 import { isTextElement, showSelectedShapeActions } from "../element";
 import { NonDeletedExcalidrawElement } from "../element/types";
 import { Language, t } from "../i18n";
-import { useIsMobile } from "../components/App";
 import { calculateScrollCenter, getSelectedElements } from "../scene";
 import { ExportType } from "../scene/types";
-import {
-  AppProps,
-  AppState,
-  ExcalidrawProps,
-  LibraryItem,
-  LibraryItems,
-} from "../types";
+import { AppProps, AppState, ExcalidrawProps, BinaryFiles } from "../types";
 import { muteFSAbortError } from "../utils";
 import { SelectedShapeActions, ShapesSwitcher, ZoomActions } from "./Actions";
 import { BackgroundPickerAndDarkModeToggle } from "./BackgroundPickerAndDarkModeToggle";
@@ -31,10 +17,7 @@ import { ErrorDialog } from "./ErrorDialog";
 import { ExportCB, ImageExportDialog } from "./ImageExportDialog";
 import { FixedSideContainer } from "./FixedSideContainer";
 import { HintViewer } from "./HintViewer";
-import { exportFile, load, trash } from "./icons";
 import { Island } from "./Island";
-import "./LayerUI.scss";
-import { LibraryUnit } from "./LibraryUnit";
 import { LoadingMessage } from "./LoadingMessage";
 import { LockButton } from "./LockButton";
 import { MobileMenu } from "./MobileMenu";
@@ -42,22 +25,30 @@ import { PasteChartDialog } from "./PasteChartDialog";
 import { Section } from "./Section";
 import { HelpDialog } from "./HelpDialog";
 import Stack from "./Stack";
-import { ToolButton } from "./ToolButton";
 import { Tooltip } from "./Tooltip";
 import { UserList } from "./UserList";
 import Library from "../data/library";
 import { JSONExportDialog } from "./JSONExportDialog";
 import { LibraryButton } from "./LibraryButton";
 import { isImageFileHandle } from "../data/blob";
+import { LibraryMenu } from "./LibraryMenu";
+
+import "./LayerUI.scss";
+import "./Toolbar.scss";
+import { PenModeButton } from "./PenModeButton";
+import { trackEvent } from "../analytics";
+import { useDeviceType } from "../components/App";
 
 interface LayerUIProps {
   actionManager: ActionManager;
   appState: AppState;
+  files: BinaryFiles;
   canvas: HTMLCanvasElement | null;
   setAppState: React.Component<any, AppState>["setState"];
   elements: readonly NonDeletedExcalidrawElement[];
   onCollabButtonClick?: () => void;
   onLockToggle: () => void;
+  onPenModeToggle: () => void;
   onInsertElements: (elements: readonly NonDeletedExcalidrawElement[]) => void;
   zenModeEnabled: boolean;
   showExitZenModeBtn: boolean;
@@ -65,7 +56,10 @@ interface LayerUIProps {
   toggleZenMode: () => void;
   langCode: Language["code"];
   isCollaborating: boolean;
-  renderTopRightUI?: (isMobile: boolean, appState: AppState) => JSX.Element;
+  renderTopRightUI?: (
+    isMobile: boolean,
+    appState: AppState,
+  ) => JSX.Element | null;
   renderCustomFooter?: (isMobile: boolean, appState: AppState) => JSX.Element;
   viewModeEnabled: boolean;
   libraryReturnUrl: ExcalidrawProps["libraryReturnUrl"];
@@ -73,300 +67,19 @@ interface LayerUIProps {
   focusContainer: () => void;
   library: Library;
   id: string;
+  onImageAction: (data: { insertOnCanvasDirectly: boolean }) => void;
 }
-
-const useOnClickOutside = (
-  ref: RefObject<HTMLElement>,
-  cb: (event: MouseEvent) => void,
-) => {
-  useEffect(() => {
-    const listener = (event: MouseEvent) => {
-      if (!ref.current) {
-        return;
-      }
-
-      if (
-        event.target instanceof Element &&
-        (ref.current.contains(event.target) ||
-          !document.body.contains(event.target))
-      ) {
-        return;
-      }
-
-      cb(event);
-    };
-    document.addEventListener("pointerdown", listener, false);
-
-    return () => {
-      document.removeEventListener("pointerdown", listener);
-    };
-  }, [ref, cb]);
-};
-
-const LibraryMenuItems = ({
-  libraryItems,
-  onRemoveFromLibrary,
-  onAddToLibrary,
-  onInsertShape,
-  pendingElements,
-  theme,
-  setAppState,
-  setLibraryItems,
-  libraryReturnUrl,
-  focusContainer,
-  library,
-  id,
-}: {
-  libraryItems: LibraryItems;
-  pendingElements: LibraryItem;
-  onRemoveFromLibrary: (index: number) => void;
-  onInsertShape: (elements: LibraryItem) => void;
-  onAddToLibrary: (elements: LibraryItem) => void;
-  theme: AppState["theme"];
-  setAppState: React.Component<any, AppState>["setState"];
-  setLibraryItems: (library: LibraryItems) => void;
-  libraryReturnUrl: ExcalidrawProps["libraryReturnUrl"];
-  focusContainer: () => void;
-  library: Library;
-  id: string;
-}) => {
-  const isMobile = useIsMobile();
-  const numCells = libraryItems.length + (pendingElements.length > 0 ? 1 : 0);
-  const CELLS_PER_ROW = isMobile ? 4 : 6;
-  const numRows = Math.max(1, Math.ceil(numCells / CELLS_PER_ROW));
-  const rows = [];
-  let addedPendingElements = false;
-
-  const referrer =
-    libraryReturnUrl || window.location.origin + window.location.pathname;
-
-  rows.push(
-    <div className="layer-ui__library-header" key="library-header">
-      <ToolButton
-        key="import"
-        type="button"
-        title={t("buttons.load")}
-        aria-label={t("buttons.load")}
-        icon={load}
-        onClick={() => {
-          importLibraryFromJSON(library)
-            .then(() => {
-              // Close and then open to get the libraries updated
-              setAppState({ isLibraryOpen: false });
-              setAppState({ isLibraryOpen: true });
-            })
-            .catch(muteFSAbortError)
-            .catch((error) => {
-              setAppState({ errorMessage: error.message });
-            });
-        }}
-      />
-      {!!libraryItems.length && (
-        <>
-          <ToolButton
-            key="export"
-            type="button"
-            title={t("buttons.export")}
-            aria-label={t("buttons.export")}
-            icon={exportFile}
-            onClick={() => {
-              saveLibraryAsJSON(library)
-                .catch(muteFSAbortError)
-                .catch((error) => {
-                  setAppState({ errorMessage: error.message });
-                });
-            }}
-          />
-          <ToolButton
-            key="reset"
-            type="button"
-            title={t("buttons.resetLibrary")}
-            aria-label={t("buttons.resetLibrary")}
-            icon={trash}
-            onClick={() => {
-              if (window.confirm(t("alerts.resetLibrary"))) {
-                library.resetLibrary();
-                setLibraryItems([]);
-                focusContainer();
-              }
-            }}
-          />
-        </>
-      )}
-      <a
-        href={`https://libraries.excalidraw.com?target=${
-          window.name || "_blank"
-        }&referrer=${referrer}&useHash=true&token=${id}&theme=${theme}`}
-        target="_excalidraw_libraries"
-      >
-        {t("labels.libraries")}
-      </a>
-    </div>,
-  );
-
-  for (let row = 0; row < numRows; row++) {
-    const y = CELLS_PER_ROW * row;
-    const children = [];
-    for (let x = 0; x < CELLS_PER_ROW; x++) {
-      const shouldAddPendingElements: boolean =
-        pendingElements.length > 0 &&
-        !addedPendingElements &&
-        y + x >= libraryItems.length;
-      addedPendingElements = addedPendingElements || shouldAddPendingElements;
-
-      children.push(
-        <Stack.Col key={x}>
-          <LibraryUnit
-            elements={libraryItems[y + x]}
-            pendingElements={
-              shouldAddPendingElements ? pendingElements : undefined
-            }
-            onRemoveFromLibrary={onRemoveFromLibrary.bind(null, y + x)}
-            onClick={
-              shouldAddPendingElements
-                ? onAddToLibrary.bind(null, pendingElements)
-                : onInsertShape.bind(null, libraryItems[y + x])
-            }
-          />
-        </Stack.Col>,
-      );
-    }
-    rows.push(
-      <Stack.Row align="center" gap={1} key={row}>
-        {children}
-      </Stack.Row>,
-    );
-  }
-
-  return (
-    <Stack.Col align="start" gap={1} className="layer-ui__library-items">
-      {rows}
-    </Stack.Col>
-  );
-};
-
-const LibraryMenu = ({
-  onClickOutside,
-  onInsertShape,
-  pendingElements,
-  onAddToLibrary,
-  theme,
-  setAppState,
-  libraryReturnUrl,
-  focusContainer,
-  library,
-  id,
-}: {
-  pendingElements: LibraryItem;
-  onClickOutside: (event: MouseEvent) => void;
-  onInsertShape: (elements: LibraryItem) => void;
-  onAddToLibrary: () => void;
-  theme: AppState["theme"];
-  setAppState: React.Component<any, AppState>["setState"];
-  libraryReturnUrl: ExcalidrawProps["libraryReturnUrl"];
-  focusContainer: () => void;
-  library: Library;
-  id: string;
-}) => {
-  const ref = useRef<HTMLDivElement | null>(null);
-  useOnClickOutside(ref, (event) => {
-    // If click on the library icon, do nothing.
-    if ((event.target as Element).closest(".ToolIcon_type_button__library")) {
-      return;
-    }
-    onClickOutside(event);
-  });
-
-  const [libraryItems, setLibraryItems] = useState<LibraryItems>([]);
-
-  const [loadingState, setIsLoading] = useState<
-    "preloading" | "loading" | "ready"
-  >("preloading");
-
-  const loadingTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-  useEffect(() => {
-    Promise.race([
-      new Promise((resolve) => {
-        loadingTimerRef.current = setTimeout(() => {
-          resolve("loading");
-        }, 100);
-      }),
-      library.loadLibrary().then((items) => {
-        setLibraryItems(items);
-        setIsLoading("ready");
-      }),
-    ]).then((data) => {
-      if (data === "loading") {
-        setIsLoading("loading");
-      }
-    });
-    return () => {
-      clearTimeout(loadingTimerRef.current!);
-    };
-  }, [library]);
-
-  const removeFromLibrary = useCallback(
-    async (indexToRemove) => {
-      const items = await library.loadLibrary();
-      const nextItems = items.filter((_, index) => index !== indexToRemove);
-      library.saveLibrary(nextItems).catch((error) => {
-        setLibraryItems(items);
-        setAppState({ errorMessage: t("alerts.errorRemovingFromLibrary") });
-      });
-      setLibraryItems(nextItems);
-    },
-    [library, setAppState],
-  );
-
-  const addToLibrary = useCallback(
-    async (elements: LibraryItem) => {
-      const items = await library.loadLibrary();
-      const nextItems = [...items, elements];
-      onAddToLibrary();
-      library.saveLibrary(nextItems).catch((error) => {
-        setLibraryItems(items);
-        setAppState({ errorMessage: t("alerts.errorAddingToLibrary") });
-      });
-      setLibraryItems(nextItems);
-    },
-    [onAddToLibrary, library, setAppState],
-  );
-
-  return loadingState === "preloading" ? null : (
-    <Island padding={1} ref={ref} className="layer-ui__library">
-      {loadingState === "loading" ? (
-        <div className="layer-ui__library-message">
-          {t("labels.libraryLoadingMessage")}
-        </div>
-      ) : (
-        <LibraryMenuItems
-          libraryItems={libraryItems}
-          onRemoveFromLibrary={removeFromLibrary}
-          onAddToLibrary={addToLibrary}
-          onInsertShape={onInsertShape}
-          pendingElements={pendingElements}
-          setAppState={setAppState}
-          setLibraryItems={setLibraryItems}
-          libraryReturnUrl={libraryReturnUrl}
-          focusContainer={focusContainer}
-          library={library}
-          theme={theme}
-          id={id}
-        />
-      )}
-    </Island>
-  );
-};
 
 const LayerUI = ({
   actionManager,
   appState,
+  files,
   setAppState,
   canvas,
   elements,
   onCollabButtonClick,
   onLockToggle,
+  onPenModeToggle,
   onInsertElements,
   zenModeEnabled,
   showExitZenModeBtn,
@@ -381,8 +94,9 @@ const LayerUI = ({
   focusContainer,
   library,
   id,
+  onImageAction,
 }: LayerUIProps) => {
-  const isMobile = useIsMobile();
+  const deviceType = useDeviceType();
 
   const renderJSONExportDialog = () => {
     if (!UIOptions.canvasActions.export) {
@@ -393,6 +107,7 @@ const LayerUI = ({
       <JSONExportDialog
         elements={elements}
         appState={appState}
+        files={files}
         actionManager={actionManager}
         exportOpts={UIOptions.canvasActions.export}
         canvas={canvas}
@@ -405,33 +120,41 @@ const LayerUI = ({
       return null;
     }
 
-    const createExporter = (type: ExportType): ExportCB => async (
-      exportedElements,
-    ) => {
-      const fileHandle = await exportCanvas(type, exportedElements, appState, {
-        exportBackground: appState.exportBackground,
-        name: appState.name,
-        viewBackgroundColor: appState.viewBackgroundColor,
-      })
-        .catch(muteFSAbortError)
-        .catch((error) => {
-          console.error(error);
-          setAppState({ errorMessage: error.message });
-        });
+    const createExporter =
+      (type: ExportType): ExportCB =>
+      async (exportedElements) => {
+        trackEvent("export", type, "ui");
+        const fileHandle = await exportCanvas(
+          type,
+          exportedElements,
+          appState,
+          files,
+          {
+            exportBackground: appState.exportBackground,
+            name: appState.name,
+            viewBackgroundColor: appState.viewBackgroundColor,
+          },
+        )
+          .catch(muteFSAbortError)
+          .catch((error) => {
+            console.error(error);
+            setAppState({ errorMessage: error.message });
+          });
 
-      if (
-        appState.exportEmbedScene &&
-        fileHandle &&
-        isImageFileHandle(fileHandle)
-      ) {
-        setAppState({ fileHandle });
-      }
-    };
+        if (
+          appState.exportEmbedScene &&
+          fileHandle &&
+          isImageFileHandle(fileHandle)
+        ) {
+          setAppState({ fileHandle });
+        }
+      };
 
     return (
       <ImageExportDialog
         elements={elements}
         appState={appState}
+        files={files}
         actionManager={actionManager}
         onExportToPng={createExporter("png")}
         onExportToSvg={createExporter("svg")}
@@ -465,6 +188,7 @@ const LayerUI = ({
       </Section>
     );
   };
+
   const renderCanvasActions = () => (
     <Section
       heading="canvasActions"
@@ -516,7 +240,7 @@ const LayerUI = ({
         className={CLASSES.SHAPE_ACTIONS_MENU}
         padding={2}
         style={{
-          // we want to make sure this doesn't overflow so substracting 200
+          // we want to make sure this doesn't overflow so subtracting 200
           // which is approximately height of zoom footer and top left menu items with some buffer
           // if active file name is displayed, subtracting 248 to account for its height
           maxHeight: `${appState.height - (appState.fileHandle ? 248 : 200)}px`,
@@ -526,18 +250,21 @@ const LayerUI = ({
           appState={appState}
           elements={elements}
           renderAction={actionManager.renderAction}
-          elementType={appState.elementType}
+          activeTool={appState.activeTool.type}
         />
       </Island>
     </Section>
   );
 
-  const closeLibrary = useCallback(
-    (event) => {
-      setAppState({ isLibraryOpen: false });
-    },
-    [setAppState],
-  );
+  const closeLibrary = useCallback(() => {
+    const isDialogOpen = !!document.querySelector(".Dialog");
+
+    // Prevent closing if any dialog is open
+    if (isDialogOpen) {
+      return;
+    }
+    setAppState({ isLibraryOpen: false });
+  }, [setAppState]);
 
   const deselectItems = useCallback(() => {
     setAppState({
@@ -548,8 +275,8 @@ const LayerUI = ({
 
   const libraryMenu = appState.isLibraryOpen ? (
     <LibraryMenu
-      pendingElements={getSelectedElements(elements, appState)}
-      onClickOutside={closeLibrary}
+      pendingElements={getSelectedElements(elements, appState, true)}
+      onClose={closeLibrary}
       onInsertShape={onInsertElements}
       onAddToLibrary={deselectItems}
       setAppState={setAppState}
@@ -557,7 +284,9 @@ const LayerUI = ({
       focusContainer={focusContainer}
       library={library}
       theme={appState.theme}
+      files={files}
       id={id}
+      appState={appState}
     />
   ) : null;
 
@@ -583,24 +312,48 @@ const LayerUI = ({
             <Section heading="shapes">
               {(heading) => (
                 <Stack.Col gap={4} align="start">
-                  <Stack.Row gap={1}>
+                  <Stack.Row
+                    gap={1}
+                    className={clsx("App-toolbar-container", {
+                      "zen-mode": zenModeEnabled,
+                    })}
+                  >
+                    <PenModeButton
+                      zenModeEnabled={zenModeEnabled}
+                      checked={appState.penMode}
+                      onChange={onPenModeToggle}
+                      title={t("toolBar.penMode")}
+                      penDetected={appState.penDetected}
+                    />
                     <LockButton
                       zenModeEnabled={zenModeEnabled}
-                      checked={appState.elementLocked}
-                      onChange={onLockToggle}
+                      checked={appState.activeTool.locked}
+                      onChange={() => onLockToggle()}
                       title={t("toolBar.lock")}
                     />
                     <Island
                       padding={1}
-                      className={clsx({ "zen-mode": zenModeEnabled })}
+                      className={clsx("App-toolbar", {
+                        "zen-mode": zenModeEnabled,
+                      })}
                     >
-                      <HintViewer appState={appState} elements={elements} />
+                      <HintViewer
+                        appState={appState}
+                        elements={elements}
+                        isMobile={deviceType.isMobile}
+                      />
                       {heading}
                       <Stack.Row gap={1}>
                         <ShapesSwitcher
+                          appState={appState}
                           canvas={canvas}
-                          elementType={appState.elementType}
+                          activeTool={appState.activeTool}
                           setAppState={setAppState}
+                          onImageAction={({ pointerType }) => {
+                            onImageAction({
+                              insertOnCanvasDirectly: pointerType !== "mouse",
+                            });
+                          }}
                         />
                       </Stack.Row>
                     </Island>
@@ -638,7 +391,7 @@ const LayerUI = ({
                     </Tooltip>
                   ))}
             </UserList>
-            {renderTopRightUI?.(isMobile, appState)}
+            {renderTopRightUI?.(deviceType.isMobile, appState)}
           </div>
         </div>
       </FixedSideContainer>
@@ -668,15 +421,39 @@ const LayerUI = ({
                 />
               </Island>
               {!viewModeEnabled && (
-                <div
-                  className={clsx("undo-redo-buttons zen-mode-transition", {
-                    "layer-ui__wrapper__footer-left--transition-bottom": zenModeEnabled,
-                  })}
-                >
-                  {actionManager.renderAction("undo", { size: "small" })}
-                  {actionManager.renderAction("redo", { size: "small" })}
-                </div>
+                <>
+                  <div
+                    className={clsx("undo-redo-buttons zen-mode-transition", {
+                      "layer-ui__wrapper__footer-left--transition-bottom":
+                        zenModeEnabled,
+                    })}
+                  >
+                    {actionManager.renderAction("undo", { size: "small" })}
+                    {actionManager.renderAction("redo", { size: "small" })}
+                  </div>
+
+                  <div
+                    className={clsx("eraser-buttons zen-mode-transition", {
+                      "layer-ui__wrapper__footer-left--transition-left":
+                        zenModeEnabled,
+                    })}
+                  >
+                    {actionManager.renderAction("eraser", { size: "small" })}
+                  </div>
+                </>
               )}
+              {!viewModeEnabled &&
+                appState.multiElement &&
+                deviceType.isTouchScreen && (
+                  <div
+                    className={clsx("finalize-button zen-mode-transition", {
+                      "layer-ui__wrapper__footer-left--transition-left":
+                        zenModeEnabled,
+                    })}
+                  >
+                    {actionManager.renderAction("finalize", { size: "small" })}
+                  </div>
+                )}
             </Section>
           </Stack.Col>
         </div>
@@ -684,7 +461,8 @@ const LayerUI = ({
           className={clsx(
             "layer-ui__wrapper__footer-center zen-mode-transition",
             {
-              "layer-ui__wrapper__footer-left--transition-bottom": zenModeEnabled,
+              "layer-ui__wrapper__footer-left--transition-bottom":
+                zenModeEnabled,
             },
           )}
         >
@@ -714,7 +492,7 @@ const LayerUI = ({
 
   const dialogs = (
     <>
-      {appState.isLoading && <LoadingMessage />}
+      {appState.isLoading && <LoadingMessage delay={250} />}
       {appState.errorMessage && (
         <ErrorDialog
           message={appState.errorMessage}
@@ -743,7 +521,7 @@ const LayerUI = ({
     </>
   );
 
-  return isMobile ? (
+  return deviceType.isMobile ? (
     <>
       {dialogs}
       <MobileMenu
@@ -755,12 +533,15 @@ const LayerUI = ({
         renderImageExportDialog={renderImageExportDialog}
         setAppState={setAppState}
         onCollabButtonClick={onCollabButtonClick}
-        onLockToggle={onLockToggle}
+        onLockToggle={() => onLockToggle()}
+        onPenModeToggle={onPenModeToggle}
         canvas={canvas}
         isCollaborating={isCollaborating}
         renderCustomFooter={renderCustomFooter}
         viewModeEnabled={viewModeEnabled}
         showThemeBtn={showThemeBtn}
+        onImageAction={onImageAction}
+        renderTopRightUI={renderTopRightUI}
       />
     </>
   ) : (
@@ -808,6 +589,7 @@ const areEqual = (prev: LayerUIProps, next: LayerUIProps) => {
     prev.renderCustomFooter === next.renderCustomFooter &&
     prev.langCode === next.langCode &&
     prev.elements === next.elements &&
+    prev.files === next.files &&
     keys.every((key) => prevAppState[key] === nextAppState[key])
   );
 };

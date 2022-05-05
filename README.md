@@ -32,6 +32,10 @@ Last but not least, we're thankful to these companies for offering their service
 
 [![Vercel](./.github/assets/vercel.svg)](https://vercel.com) [![Sentry](./.github/assets/sentry.svg)](https://sentry.io) [![Crowdin](./.github/assets/crowdin.svg)](https://crowdin.com)
 
+## Who's integrating Excalidraw
+
+[Google Cloud](https://googlecloudcheatsheet.withgoogle.com/architecture) • [Meta](https://meta.com/) • [CodeSandbox](https://codesandbox.io/) • [Obsidian Excalidraw](https://github.com/zsviczian/obsidian-excalidraw-plugin) • [Replit](https://replit.com/) • [Slite](https://slite.com/) • [Notion](https://notion.so/) • [HackerRank](https://www.hackerrank.com/) •
+
 ## Documentation
 
 ### Shortcuts
@@ -69,6 +73,8 @@ https://excalidraw.com/#room=91bd46ae3aa84dff9d20,pfLqgEoY1c2ioq8LmGwsFA
 The first set of digits is the room. This is visible from the server that’s going to dispatch messages to everyone that knows this number.
 
 The second set of digits is the encryption key. The Excalidraw server doesn’t know about it. This is what all the participants use to encrypt/decrypt the messages.
+
+> Note: Please ensure that the encryption key is 22 characters long.
 
 ## Shape libraries
 
@@ -116,16 +122,47 @@ yarn start
 
 Now you can open [http://localhost:3000](http://localhost:3000) and start coding in your favorite code editor.
 
+#### Collaboration
+
+For collaboration, you will need to set up [collab server](https://github.com/excalidraw/excalidraw-room) in local.
+
 #### Commands
 
-| Command            | Description                       |
-| ------------------ | --------------------------------- |
-| `yarn`             | Install the dependencies          |
-| `yarn start`       | Run the project                   |
-| `yarn fix`         | Reformat all files with Prettier  |
-| `yarn test`        | Run tests                         |
-| `yarn test:update` | Update test snapshots             |
-| `yarn test:code`   | Test for formatting with Prettier |
+##### Install the dependencies
+
+```
+yarn
+```
+
+##### Run the project
+
+```
+yarn start
+```
+
+##### Reformat all files with Prettier
+
+```
+yarn fix
+```
+
+##### Run tests
+
+```
+yarn test
+```
+
+##### Update test snapshots
+
+```
+yarn test:update
+```
+
+##### Test for formatting with Prettier
+
+```
+yarn test:code
+```
 
 #### Docker Compose
 

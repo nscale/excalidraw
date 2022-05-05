@@ -16,18 +16,18 @@ const LIBRARY_ICON = (
 export const LibraryButton: React.FC<{
   appState: AppState;
   setAppState: React.Component<any, AppState>["setState"];
-}> = ({ appState, setAppState }) => {
+  isMobile?: boolean;
+}> = ({ appState, setAppState, isMobile }) => {
   return (
     <label
       className={clsx(
-        "ToolIcon ToolIcon_type_floating ToolIcon__library zen-mode-visibility",
+        "ToolIcon ToolIcon_type_floating ToolIcon__library",
         `ToolIcon_size_medium`,
         {
-          "zen-mode-visibility--hidden": appState.zenModeEnabled,
+          "is-mobile": isMobile,
         },
       )}
-      title={`${capitalizeString(t("toolBar.library"))} — 9`}
-      style={{ marginInlineStart: "var(--space-factor)" }}
+      title={`${capitalizeString(t("toolBar.library"))} — 0`}
     >
       <input
         className="ToolIcon_type_checkbox"
@@ -38,7 +38,7 @@ export const LibraryButton: React.FC<{
         }}
         checked={appState.isLibraryOpen}
         aria-label={capitalizeString(t("toolBar.library"))}
-        aria-keyshortcuts="9"
+        aria-keyshortcuts="0"
       />
       <div className="ToolIcon__icon">{LIBRARY_ICON}</div>
     </label>
